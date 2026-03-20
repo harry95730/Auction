@@ -1,0 +1,38 @@
+name: auction
+description: "Auction — squad bidding and match markets."
+publish_to: 'none'
+version: 0.1.0
+
+environment:
+  sdk: ^3.10.0-290.4.beta
+
+dependencies:
+  flutter:
+    sdk: flutter
+  firebase_core: ^4.5.0
+  cloud_firestore: ^6.1.3
+  firebase_auth: ^6.2.0
+  google_sign_in: ^7.2.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+  flutter_launcher_icons: ^0.14.4
+
+flutter:
+  uses-material-design: true
+  assets:
+    - assets/teams/
+
+flutter_launcher_icons:
+  android: true
+  ios: true
+  macos:
+    generate: true
+    image_path: assets/app_icon.png
+  web:
+    generate: true
+  image_path: assets/app_icon.png
+  adaptive_icon_background: "#0B1220"
+  adaptive_icon_foreground: assets/app_icon.png
