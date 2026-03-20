@@ -1,4 +1,6 @@
 import java.io.FileInputStream
+import java.io.InputStreamReader
+import java.nio.charset.StandardCharsets
 import java.util.Properties
 
 plugins {
@@ -9,11 +11,23 @@ plugins {
     id("com.google.gms.google-services")
 }
 
+// key.properties lives next to the keystore under android/ (see android/key.properties.example).
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 if (hasReleaseKeystore) {
-    keystoreProperties.load(FileInputStream(keystorePropertiesFile))
+    keystoreProperties.load(
+        InputStreamReader(FileInputStream(keystorePropertiesFile), StandardCharsets.UTF_8),
+    )
+}
+
+// GitHub Actions sets CI=true — never ship a debug-signed bundle from CI by accident.
+val isCi = System.getenv("CI") == "true"
+if (isCi && !hasReleaseKeystore) {
+    error(
+        "android/key.properties is missing. The configure-signing step must run before " +
+            "flutter build (see .github/workflows and android/SIGNING.md).",
+    )
 }
 
 android {
@@ -44,16 +58,18 @@ android {
     signingConfigs {
         if (hasReleaseKeystore) {
             create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")
-                keyPassword = keystoreProperties.getProperty("keyPassword")
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile")!!)
-                storePassword = keystoreProperties.getProperty("storePassword")
+                keyAlias = keystoreProperties.getProperty("keyAlias")!!.trim()
+                keyPassword = keystoreProperties.getProperty("keyPassword")!!.trim()
+                storePassword = keystoreProperties.getProperty("storePassword")!!.trim()
+                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile")!!.trim())
             }
         }
     }
 
     buildTypes {
         release {
+            // Play Console rejects "debug-signed" bundles; release must not be debuggable.
+            isDebuggable = false
             signingConfig =
                 if (hasReleaseKeystore) {
                     signingConfigs.getByName("release")

@@ -2,6 +2,27 @@
 
 Google Play rejects bundles signed with the **debug** keystore. Release builds must use an **upload keystore** you create once.
 
+## What belongs in Git vs secrets
+
+| Safe to commit | Never commit |
+|----------------|--------------|
+| `gradle.properties` (heap, AndroidX, Gradle tuning — **no passwords**) | `key.properties`, `*.jks`, `*.keystore` |
+| `app/build.gradle.kts`, `settings.gradle.kts`, manifests | `local.properties` (SDK paths on your machine) |
+
+CI signing uses **GitHub Actions secrets** (`ANDROID_KEYSTORE_BASE64`, passwords, alias) — not checked-in files.
+
+### Git: always `git add` from the **repository root**
+
+If your shell is in `android/`, paths must **not** repeat `android/`:
+
+```bash
+# Wrong (from android/):  git add android/gradle.properties  → looks for android/android/...
+# Right (from android/):
+git add gradle.properties app/build.gradle.kts settings.gradle.kts
+# Right (from repo root):
+git add android/gradle.properties android/app/build.gradle.kts android/settings.gradle.kts
+```
+
 ## 1. Create the keystore (once)
 
 From the project root:
@@ -53,3 +74,11 @@ base64 -i android/upload-keystore.jks | pbcopy   # macOS: copies to clipboard
 ```
 
 The workflow writes `android/key.properties` and `android/upload-keystore.jks` before `flutter build appbundle`.
+
+## Still seeing “signed in debug mode” on Play?
+
+1. **Upload the new `.aab`** — Play keeps old versions; confirm you’re uploading the artifact from the latest CI run or a fresh local `flutter build appbundle --release`.
+2. **Local builds** — You must have **`android/key.properties`** + **`android/upload-keystore.jks`** (not only CI). Without them, Gradle still signs **debug**.
+3. **GitHub secret `ANDROID_KEYSTORE_BASE64`** — Must be **one line** of base64 (no line breaks). On macOS: `base64 -i upload-keystore.jks | tr -d '\n' | pbcopy`. Wrong encoding → corrupt `.jks` → signing can fall back or fail.
+4. **Passwords / alias** — Must match the keystore (`keytool -list -keystore ... -alias <alias>`).
+5. **CI logs** — Open the **“Verify release signing config”** step: it should show **`Config: release`** for **`Variant: release`**, not **`Config: debug`**.

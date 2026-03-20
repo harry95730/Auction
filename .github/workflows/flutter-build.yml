@@ -23,8 +23,57 @@ jobs:
       - name: Install dependencies
         run: flutter pub get
 
-      - name: Build Android AppBundle
-        run: flutter build appbundle
+      # Release AAB must be signed with your upload key (not debug). See android/SIGNING.md.
+      - name: Configure Android release signing
+        working-directory: android
+        env:
+          ANDROID_KEYSTORE_BASE64: ${{ secrets.ANDROID_KEYSTORE_BASE64 }}
+          ANDROID_STORE_PASSWORD: ${{ secrets.ANDROID_STORE_PASSWORD }}
+          ANDROID_KEY_PASSWORD: ${{ secrets.ANDROID_KEY_PASSWORD }}
+          ANDROID_KEY_ALIAS: ${{ secrets.ANDROID_KEY_ALIAS }}
+        run: |
+          set -e
+          if [ -z "${ANDROID_KEYSTORE_BASE64}" ]; then
+            echo "::error::Set GitHub Actions secrets: ANDROID_KEYSTORE_BASE64 (base64 of upload-keystore.jks), ANDROID_STORE_PASSWORD, ANDROID_KEY_PASSWORD, ANDROID_KEY_ALIAS. See android/SIGNING.md"
+            exit 1
+          fi
+          # Decode keystore (secret must be single-line base64; no extra quotes in GitHub UI)
+          printf '%s' "$ANDROID_KEYSTORE_BASE64" | base64 -d > upload-keystore.jks
+          test -s upload-keystore.jks
+          {
+            echo "storePassword=${ANDROID_STORE_PASSWORD}"
+            echo "keyPassword=${ANDROID_KEY_PASSWORD}"
+            echo "keyAlias=${ANDROID_KEY_ALIAS}"
+            echo "storeFile=upload-keystore.jks"
+          } > key.properties
+          # Sanity-check keystore + alias (does not print passwords)
+          keytool -list -keystore upload-keystore.jks -storepass "${ANDROID_STORE_PASSWORD}" -alias "${ANDROID_KEY_ALIAS}" > /dev/null
+
+      - name: Verify release signing config (not debug)
+        env:
+          CI: true
+        run: |
+          cd android
+          ./gradlew :app:signingReport --no-daemon 2>&1 | tee ../signing-report.txt
+          cd ..
+          REL="$(grep -A20 'Variant: release' signing-report.txt || true)"
+          echo "$REL" | head -25
+          if echo "$REL" | grep -q 'Config: debug'; then
+            echo "::error::Release variant is still using debug signing. Fix ANDROID_* secrets and key.properties (see android/SIGNING.md)."
+            exit 1
+          fi
+          if ! echo "$REL" | grep -q 'Config: release'; then
+            echo "::error::Could not find Config: release for the release variant. See signing-report.txt in the job log."
+            exit 1
+          fi
+
+      - name: Clean and build Android App Bundle (release)
+        env:
+          CI: true
+        run: |
+          flutter clean
+          flutter pub get
+          flutter build appbundle --release
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
