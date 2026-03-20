@@ -11,22 +11,13 @@ plugins {
     id("com.google.gms.google-services")
 }
 
-// key.properties lives next to the keystore under android/ (see android/key.properties.example).
+// key.properties is under android/; storeFile paths are relative to that root (see key.properties.example).
 val keystorePropertiesFile = rootProject.file("key.properties")
 val keystoreProperties = Properties()
 val hasReleaseKeystore = keystorePropertiesFile.exists()
 if (hasReleaseKeystore) {
     keystoreProperties.load(
         InputStreamReader(FileInputStream(keystorePropertiesFile), StandardCharsets.UTF_8),
-    )
-}
-
-// GitHub Actions sets CI=true — never ship a debug-signed bundle from CI by accident.
-val isCi = System.getenv("CI") == "true"
-if (isCi && !hasReleaseKeystore) {
-    error(
-        "android/key.properties is missing. The configure-signing step must run before " +
-            "flutter build (see .github/workflows and android/SIGNING.md).",
     )
 }
 

@@ -45,14 +45,14 @@ Repo → **Code** → **Codespaces** → **Create codespace**. In the terminal:
 ```bash
 sudo apt-get update && sudo apt-get install -y openjdk-17-jdk
 cd android
-keytool -genkey -v -keystore upload-keystore.jks -storetype JKS \
+keytool -genkey -v -keystore app/upload-keystore.jks -storetype JKS \
   -keyalg RSA -keysize 2048 -validity 10000 -alias upload \
   -dname "CN=Auction, OU=App, O=NA, L=NA, ST=NA, C=US"
 # Same password when prompted for key + store, or set explicitly with -storepass / -keypass (then remember them for GitHub secrets)
-base64 -w0 upload-keystore.jks
+base64 -w0 app/upload-keystore.jks
 ```
 
-Copy the **one-line** base64 → GitHub secret **`ANDROID_KEYSTORE_BASE64`**. Add password secrets + **`ANDROID_KEY_ALIAS`** (`upload`). Do **not** commit `upload-keystore.jks`.
+Copy the **one-line** base64 → GitHub secret **`ANDROID_KEYSTORE_BASE64`**. Add password secrets + **`ANDROID_KEY_ALIAS`** (`upload`). Do **not** commit `app/upload-keystore.jks`.
 
 **B — macOS: small JDK only** — `brew install openjdk@17`, then run **`keytool`** from Homebrew’s path (see `brew info openjdk@17`).
 
@@ -62,7 +62,7 @@ Copy the **one-line** base64 → GitHub secret **`ANDROID_KEYSTORE_BASE64`**. Ad
 
 ```bash
 cd android
-keytool -genkey -v -keystore upload-keystore.jks -storetype JKS \
+keytool -genkey -v -keystore app/upload-keystore.jks -storetype JKS \
   -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 ```
 
@@ -76,10 +76,10 @@ If you **do** run `flutter build` on your computer:
 
 ```bash
 cp android/key.properties.example android/key.properties
-# Edit: passwords, alias, storeFile=upload-keystore.jks
+# Edit: passwords, alias, storeFile=app/upload-keystore.jks
 ```
 
-Put `upload-keystore.jks` in **`android/`**. Then:
+Put `upload-keystore.jks` in **`android/app/`**. Then:
 
 ```bash
 flutter build appbundle --release
@@ -103,7 +103,7 @@ If the workflow fails with **`Set GitHub Actions secrets: ANDROID_KEYSTORE_BASE6
 
 | Name | What to paste |
 |------|----------------|
-| `ANDROID_KEYSTORE_BASE64` | Full **single-line** base64 of `upload-keystore.jks` (see command below). No quotes in the value. |
+| `ANDROID_KEYSTORE_BASE64` | Full **single-line** base64 of `android/app/upload-keystore.jks` (see command below). No quotes in the value. |
 | `ANDROID_STORE_PASSWORD` | Keystore password you chose in `keytool`. |
 | `ANDROID_KEY_PASSWORD` | Key password (often same as store password). |
 | `ANDROID_KEY_ALIAS` | The `-alias` you used (e.g. `upload`). |
@@ -112,25 +112,25 @@ If the workflow fails with **`Set GitHub Actions secrets: ANDROID_KEYSTORE_BASE6
 
 ### 4c. Generate `ANDROID_KEYSTORE_BASE64` (macOS)
 
-From the project root, with `android/upload-keystore.jks` present:
+From the project root, with `android/app/upload-keystore.jks` present:
 
 ```bash
-base64 -i android/upload-keystore.jks | tr -d '\n' | pbcopy
+base64 -i android/app/upload-keystore.jks | tr -d '\n' | pbcopy
 ```
 
 Paste into Clipboard → GitHub secret **ANDROID_KEYSTORE_BASE64** → Save.  
-**Linux:** `base64 -w0 android/upload-keystore.jks` (copy the whole line).
+**Linux:** `base64 -w0 android/app/upload-keystore.jks` (copy the whole line).
 
 ### 4d. After saving
 
 Push to `build` again (or **Actions** → **Flutter Android Build** → **Re-run jobs**). The **Configure Android release signing** step should pass.
 
-The workflow writes `android/key.properties` and `android/upload-keystore.jks` on the runner before `flutter build appbundle` (those files are **not** stored in git).
+The workflow writes `android/key.properties` and `android/app/upload-keystore.jks` on the runner before `flutter build appbundle` (those files are **not** stored in git).
 
 ## Still seeing “signed in debug mode” on Play?
 
 1. **Upload the new `.aab`** — Play keeps old versions; confirm you’re uploading the artifact from the latest CI run or a fresh local `flutter build appbundle --release`.
-2. **Local builds** — You must have **`android/key.properties`** + **`android/upload-keystore.jks`** (not only CI). Without them, Gradle still signs **debug**.
-3. **GitHub secret `ANDROID_KEYSTORE_BASE64`** — Must be **one line** of base64 (no line breaks). On macOS: `base64 -i upload-keystore.jks | tr -d '\n' | pbcopy`. Wrong encoding → corrupt `.jks` → signing can fall back or fail.
+2. **Local builds** — You must have **`android/key.properties`** + **`android/app/upload-keystore.jks`** (not only CI). Without them, Gradle still signs **debug**.
+3. **GitHub secret `ANDROID_KEYSTORE_BASE64`** — Must be **one line** of base64 (no line breaks). From repo root: `base64 -i android/app/upload-keystore.jks | tr -d '\n' | pbcopy`. Wrong encoding → corrupt `.jks` → signing can fall back or fail.
 4. **Passwords / alias** — Must match the keystore (`keytool -list -keystore ... -alias <alias>`).
 5. **CI logs** — Open the **“Verify release signing config”** step: it should show **`Config: release`** for **`Variant: release`**, not **`Config: debug`**.
