@@ -77,12 +77,14 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
     required Team myTeam,
     required double amount,
     required String matchBidTeamDocumentId,
+    required double payoutOdds,
   }) {
     return _bidsRepo.placeBid(
       bidderTeamDocumentId: myTeam.documentId,
       matchDocumentId: _m.documentId,
       matchBidTeamDocumentId: matchBidTeamDocumentId,
       bidAmount: amount,
+      payoutOdds: payoutOdds,
     );
   }
 
@@ -114,7 +116,8 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
               required bool hasTeam,
               required bool walletLoading,
               required double? walletBalance,
-              required Future<void> Function(double amount, String matchBidTeamDocumentId)? onPlaceBid,
+              required Future<void> Function(double amount, String matchBidTeamDocumentId, double payoutOdds)?
+                  onPlaceBid,
               ExistingMatchBid? existingBid,
               bool existingBidLoading = false,
             }) {
@@ -199,16 +202,17 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                             existingSnap.connectionState == ConnectionState.waiting;
                         final existingBid = existingSnap.data;
 
-                        Future<void> Function(double, String)? onPlaceBid;
+                        Future<void> Function(double, String, double)? onPlaceBid;
                         if (!pending &&
                             existingBid == null &&
                             hasTeam &&
                             myTeam != null &&
                             myTeam.documentId.isNotEmpty) {
-                          onPlaceBid = (amount, matchBidTeamDocumentId) => _placeBid(
+                          onPlaceBid = (amount, matchBidTeamDocumentId, payoutOdds) => _placeBid(
                                 myTeam: myTeam,
                                 amount: amount,
                                 matchBidTeamDocumentId: matchBidTeamDocumentId,
+                                payoutOdds: payoutOdds,
                               );
                         }
 
@@ -263,10 +267,34 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
         '${dt.hour.toString().padLeft(2, '0')}:${dt.minute.toString().padLeft(2, '0')} IST';
   }
 
-  String _oddsLine() {
-    final o = _m.odds;
-    if (o == null) return '— ODDS';
-    return '${o.toStringAsFixed(2)}x ODDS';
+  static const _oddsHeroStyle = TextStyle(
+    color: Colors.white,
+    fontSize: 32,
+    fontWeight: FontWeight.w900,
+    fontStyle: FontStyle.italic,
+  );
+
+  Widget _buildOddsHeroRow() {
+    final list = _m.odds;
+    if (list == null || list.isEmpty) {
+      return const Text('—', style: _oddsHeroStyle);
+    }
+    if (list.length >= 2) {
+      return Row(
+        mainAxisAlignment: MainAxisAlignment.center,
+        crossAxisAlignment: CrossAxisAlignment.baseline,
+        textBaseline: TextBaseline.alphabetic,
+        children: [
+          Text(list[0].toStringAsFixed(2), style: _oddsHeroStyle),
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            child: Text('·', style: _oddsHeroStyle.copyWith(fontSize: 28, color: Colors.white54)),
+          ),
+          Text(list[1].toStringAsFixed(2), style: _oddsHeroStyle),
+        ],
+      );
+    }
+    return Text('${list[0].toStringAsFixed(2)}x', style: _oddsHeroStyle);
   }
 
   Color _fallbackTint1() => const Color(0xFF1565C0);
@@ -288,6 +316,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
     final t1 = _team1?.name ?? _m.team1 ?? 'TEAM 1';
     final t2 = _team2?.name ?? _m.team2 ?? 'TEAM 2';
     final venue = _m.venue ?? 'Venue TBA';
+    final winnerSide = matchCompletedWinnerSide(_m);
 
     return Scaffold(
       backgroundColor: _BidUi.bg,
@@ -317,8 +346,9 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                           matchName: _m.team1 ?? 'TEAM 1',
                           logoText: _abbr(_m.team1Id, _m.team1),
                           fallbackColor: _fallbackTint1(),
-                          label: 'HOME TEAM',
-                          labelColor: Colors.green.shade900,
+                          label: winnerSide == 0 ? 'WINNER' : 'HOME TEAM',
+                          labelColor: winnerSide == 0 ? AppColors.neonGreen : Colors.green.shade900,
+                          highlightWinner: winnerSide == 0,
                         ),
                         const Padding(
                           padding: EdgeInsets.symmetric(vertical: 10),
@@ -327,15 +357,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                             style: TextStyle(color: Colors.orange, fontWeight: FontWeight.bold, fontSize: 16),
                           ),
                         ),
-                        Text(
-                          _oddsLine(),
-                          style: const TextStyle(
-                            color: Colors.white,
-                            fontSize: 32,
-                            fontWeight: FontWeight.w900,
-                            fontStyle: FontStyle.italic,
-                          ),
-                        ),
+                        _buildOddsHeroRow(),
                         Text(
                           (_m.status ?? '').toUpperCase().contains('LIVE') ? 'LIVE MARKET' : 'HIGH VOLATILITY MATCH',
                           style: const TextStyle(color: Colors.grey, fontSize: 10, letterSpacing: 1.2),
@@ -350,8 +372,9 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                           matchName: _m.team2 ?? 'TEAM 2',
                           logoText: _abbr(_m.team2Id, _m.team2),
                           fallbackColor: _fallbackTint2(),
-                          label: 'CHALLENGER',
-                          labelColor: Colors.white10,
+                          label: winnerSide == 1 ? 'WINNER' : 'CHALLENGER',
+                          labelColor: winnerSide == 1 ? AppColors.neonGreen : Colors.white10,
+                          highlightWinner: winnerSide == 1,
                         ),
                         const SizedBox(height: 32),
                       ],
@@ -374,6 +397,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
     required Color fallbackColor,
     required String label,
     required Color labelColor,
+    bool highlightWinner = false,
   }) {
     final name = (team?.name ?? matchName).toUpperCase();
     final assetPath = teamLogoAssetPathForMatch(
@@ -383,7 +407,20 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
 
     return ClipRRect(
       borderRadius: BorderRadius.circular(16),
-      child: Stack(
+      child: Container(
+        decoration: highlightWinner
+            ? BoxDecoration(
+                borderRadius: BorderRadius.circular(16),
+                border: Border.all(color: AppColors.neonGreen, width: 2),
+                boxShadow: [
+                  BoxShadow(
+                    color: AppColors.neonGreen.withValues(alpha: 0.25),
+                    blurRadius: 12,
+                  ),
+                ],
+              )
+            : null,
+        child: Stack(
         alignment: Alignment.center,
         children: [
           Positioned.fill(
@@ -442,12 +479,29 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                 Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
                   decoration: BoxDecoration(color: labelColor, borderRadius: BorderRadius.circular(20)),
-                  child: Text(label, style: const TextStyle(color: Colors.white, fontSize: 10, fontWeight: FontWeight.bold)),
+                  child: Row(
+                    mainAxisSize: MainAxisSize.min,
+                    children: [
+                      if (highlightWinner) ...[
+                        const Icon(Icons.check_circle, color: Colors.black87, size: 14),
+                        const SizedBox(width: 4),
+                      ],
+                      Text(
+                        label,
+                        style: TextStyle(
+                          color: highlightWinner ? Colors.black87 : Colors.white,
+                          fontSize: 10,
+                          fontWeight: FontWeight.bold,
+                        ),
+                      ),
+                    ],
+                  ),
                 ),
               ],
             ),
           ),
         ],
+      ),
       ),
     );
   }

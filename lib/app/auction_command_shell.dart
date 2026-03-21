@@ -7,6 +7,7 @@ import '../features/bids/domain/repositories/bids_repository.dart';
 import '../features/bids/presentation/screens/recent_bids_history_screen.dart';
 import '../features/dashboard/presentation/screens/auction_dashboard_screen.dart';
 import '../features/leaderboard/presentation/screens/auction_leaderboard_screen.dart';
+import '../features/admin/presentation/screens/match_management_screen.dart';
 import '../features/match_schedule/domain/repositories/match_schedule_repository.dart';
 import '../features/match_schedule/presentation/screens/match_schedule_screen.dart';
 import '../features/teams/domain/entities/team.dart';
@@ -45,41 +46,71 @@ class _AuctionCommandShellState extends State<AuctionCommandShell> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: AppColors.scaffoldBackground,
-      body: IndexedStack(
-        index: _tabIndex,
-        children: [
-          AuctionDashboardScreen(
-            matchScheduleRepository: widget.matchScheduleRepository,
-            teamRepository: widget.teamRepository,
-            onNavigateToTab: (i) => setState(() => _tabIndex = i),
+    final uid = FirebaseAuth.instance.currentUser?.uid;
+    return StreamBuilder<bool>(
+      stream: uid != null ? _usersDs.watchIsAdmin(uid) : Stream<bool>.value(false),
+      builder: (context, adminSnap) {
+        final isAdmin = adminSnap.data ?? false;
+        return Scaffold(
+          backgroundColor: AppColors.scaffoldBackground,
+          body: IndexedStack(
+            index: _tabIndex,
+            children: [
+              AuctionDashboardScreen(
+                matchScheduleRepository: widget.matchScheduleRepository,
+                teamRepository: widget.teamRepository,
+                onNavigateToTab: (i) => setState(() => _tabIndex = i),
+              ),
+              MatchScheduleScreen(
+                repository: widget.matchScheduleRepository,
+                teamRepository: widget.teamRepository,
+                bidsRepository: _bidsRepo,
+              ),
+              AuctionLeaderboardScreen(
+                teamRepository: widget.teamRepository,
+                matchScheduleRepository: widget.matchScheduleRepository,
+                bidsRepository: _bidsRepo,
+              ),
+              _HistoryTab(
+                teamRepository: widget.teamRepository,
+                matchScheduleRepository: widget.matchScheduleRepository,
+                bidsRepository: _bidsRepo,
+                usersDs: _usersDs,
+              ),
+            ],
           ),
-          MatchScheduleScreen(
-            repository: widget.matchScheduleRepository,
-            teamRepository: widget.teamRepository,
-            bidsRepository: _bidsRepo,
+          floatingActionButton: isAdmin
+              ? Padding(
+                  padding: const EdgeInsets.only(bottom: 72),
+                  child: FloatingActionButton.extended(
+                    onPressed: () {
+                      Navigator.of(context).push<void>(
+                        MaterialPageRoute<void>(
+                          builder: (_) => MatchManagementScreen(
+                            matchScheduleRepository: widget.matchScheduleRepository,
+                            teamRepository: widget.teamRepository,
+                            usersDataSource: _usersDs,
+                          ),
+                        ),
+                      );
+                    },
+                    backgroundColor: AppColors.neonGreen,
+                    foregroundColor: Colors.black,
+                    icon: const Icon(Icons.edit_calendar_outlined),
+                    label: const Text('MATCH MGMT'),
+                  ),
+                )
+              : null,
+          floatingActionButtonLocation: FloatingActionButtonLocation.endFloat,
+          bottomNavigationBar: SafeArea(
+            minimum: const EdgeInsets.only(bottom: 4),
+            child: CustomNavBar(
+              selectedIndex: _tabIndex,
+              onItemSelected: (i) => setState(() => _tabIndex = i),
+            ),
           ),
-          AuctionLeaderboardScreen(
-            teamRepository: widget.teamRepository,
-            matchScheduleRepository: widget.matchScheduleRepository,
-            bidsRepository: _bidsRepo,
-          ),
-          _HistoryTab(
-            teamRepository: widget.teamRepository,
-            matchScheduleRepository: widget.matchScheduleRepository,
-            bidsRepository: _bidsRepo,
-            usersDs: _usersDs,
-          ),
-        ],
-      ),
-      bottomNavigationBar: SafeArea(
-        minimum: const EdgeInsets.only(bottom: 4),
-        child: CustomNavBar(
-          selectedIndex: _tabIndex,
-          onItemSelected: (i) => setState(() => _tabIndex = i),
-        ),
-      ),
+        );
+      },
     );
   }
 }

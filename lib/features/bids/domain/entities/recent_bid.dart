@@ -9,6 +9,7 @@ class RecentBid {
     required this.pickedTeamDocumentId,
     required this.bidAmount,
     required this.result,
+    this.payoutOdds,
     this.createdAt,
   });
 
@@ -20,6 +21,8 @@ class RecentBid {
   final String pickedTeamDocumentId;
   final double bidAmount;
   final String result;
+  /// Payout multiplier for the picked side at bid time (Firestore `payout_odds`).
+  final double? payoutOdds;
   final DateTime? createdAt;
 
   factory RecentBid.fromFirestore(String documentId, Map<String, dynamic> d) {
@@ -34,6 +37,7 @@ class RecentBid {
       pickedTeamDocumentId: (d['match_bid_id'] as String?)?.trim() ?? '',
       bidAmount: (d['bid_amount'] as num?)?.toDouble() ?? 0,
       result: (d['result'] as String?)?.trim().toLowerCase() ?? 'pending',
+      payoutOdds: (d['payout_odds'] as num?)?.toDouble(),
       createdAt: at,
     );
   }

@@ -9,6 +9,7 @@ class TeamModel {
     this.players,
     this.logoUrl,
     this.homeGround,
+    this.venue,
     this.tournament,
     this.season,
     this.owner,
@@ -28,6 +29,8 @@ class TeamModel {
   final List<String>? players;
   final String? logoUrl;
   final String? homeGround;
+  /// Optional home venue name (Firestore `venue`); [homeGround] is `home_ground`.
+  final String? venue;
   final String? tournament;
   final int? season;
   final String? owner;
@@ -48,6 +51,7 @@ class TeamModel {
       players: _parseStringList(raw['players']),
       logoUrl: _str(raw['logo'] ?? raw['logoUrl']),
       homeGround: _str(raw['home_ground']),
+      venue: _str(raw['venue']),
       tournament: _str(raw['tournament']),
       season: _parseInt(raw['season']),
       owner: _str(raw['owner']),
@@ -69,6 +73,7 @@ class TeamModel {
         players: players,
         logoUrl: logoUrl,
         homeGround: homeGround,
+        venue: venue,
         tournament: tournament,
         season: season,
         owner: owner,

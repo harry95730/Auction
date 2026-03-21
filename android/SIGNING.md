@@ -76,7 +76,7 @@ If you **do** run `flutter build` on your computer:
 
 ```bash
 cp android/key.properties.example android/key.properties
-# Edit: passwords, alias, storeFile=app/upload-keystore.jks
+# Edit: passwords, alias, storeFile=upload-keystore.jks (file at android/app/upload-keystore.jks)
 ```
 
 Put `upload-keystore.jks` in **`android/app/`**. Then:

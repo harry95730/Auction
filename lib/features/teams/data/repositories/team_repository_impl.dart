@@ -25,6 +25,13 @@ class TeamRepositoryImpl implements TeamRepository {
   }
 
   @override
+  Stream<List<Team>> watchTeams({String? tournament}) {
+    return _dataSource.watchTeams(tournament: tournament).map(
+          (models) => models.map((m) => m.toEntity()).toList(),
+        );
+  }
+
+  @override
   Future<Team?> getByTeamId(String teamId) async {
     final model = await _dataSource.fetchByTeamId(teamId);
     return model?.toEntity();

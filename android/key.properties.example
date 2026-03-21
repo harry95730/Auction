@@ -1,10 +1,11 @@
-# Copy to key.properties (never commit key.properties) and set real values.
-# Generate a keystore once (from android/):
-#   keytool -genkey -v -keystore app/upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
+# Copy to android/key.properties (never commit key.properties) and set real values.
+# Generate a keystore once; keystore file should live at android/app/upload-keystore.jks:
+#   cd android/app
+#   keytool -genkey -v -keystore upload-keystore.jks -storetype JKS -keyalg RSA -keysize 2048 -validity 10000 -alias upload
 #
-# storeFile is relative to the android/ directory (see app/build.gradle.kts).
+# storeFile is relative to the android/app/ module (see app/build.gradle.kts).
 
 storePassword=your-store-password
 keyPassword=your-key-password
 keyAlias=upload
-storeFile=app/upload-keystore.jks
+storeFile=upload-keystore.jks

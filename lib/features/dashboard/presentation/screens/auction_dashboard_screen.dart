@@ -221,9 +221,15 @@ class _AuctionDashboardScreenState extends State<AuctionDashboardScreen> {
       );
     }
 
-    return FutureBuilder<List<Match>>(
-      future: widget.matchScheduleRepository.getMatches(),
+    return StreamBuilder<List<Match>>(
+      stream: widget.matchScheduleRepository.watchMatches(),
       builder: (context, matchSnap) {
+        if (matchSnap.hasError) {
+          return Text(
+            'Could not load matches',
+            style: TextStyle(color: Colors.red.shade300, fontSize: 13),
+          );
+        }
         final matches = matchSnap.data ?? [];
         final byId = {for (final m in matches) m.documentId: m};
 
@@ -454,10 +460,16 @@ class _AuctionDashboardScreenState extends State<AuctionDashboardScreen> {
   Widget _buildUpcomingMatchesSection(String? teamDocumentId) {
     final teamDoc = teamDocumentId?.trim() ?? '';
 
-    return FutureBuilder<List<Match>>(
-      future: widget.matchScheduleRepository.getMatches(),
+    return StreamBuilder<List<Match>>(
+      stream: widget.matchScheduleRepository.watchMatches(),
       builder: (context, snapshot) {
-        if (snapshot.connectionState == ConnectionState.waiting) {
+        if (snapshot.hasError) {
+          return Text(
+            'Could not load matches',
+            style: TextStyle(color: Colors.red.shade300),
+          );
+        }
+        if (!snapshot.hasData) {
           return const Center(
             child: Padding(
               padding: EdgeInsets.all(24),
@@ -465,13 +477,7 @@ class _AuctionDashboardScreenState extends State<AuctionDashboardScreen> {
             ),
           );
         }
-        if (snapshot.hasError) {
-          return Text(
-            'Could not load matches',
-            style: TextStyle(color: Colors.red.shade300),
-          );
-        }
-        final all = snapshot.data ?? [];
+        final all = snapshot.data!;
         final upcoming = _upcomingMatches(all);
         if (upcoming.isEmpty) {
           return Container(

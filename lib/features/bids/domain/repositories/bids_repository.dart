@@ -9,6 +9,7 @@ abstract class BidsRepository {
     required String matchDocumentId,
     required String matchBidTeamDocumentId,
     required double bidAmount,
+    required double payoutOdds,
   });
 
   /// [team1DocumentId] / [team2DocumentId] — `teams` document ids for the two sides.

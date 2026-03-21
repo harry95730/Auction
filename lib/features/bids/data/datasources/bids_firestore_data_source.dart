@@ -22,6 +22,7 @@ class BidsFirestoreDataSource {
     required String matchDocumentId,
     required String matchBidTeamDocumentId,
     required double bidAmount,
+    required double payoutOdds,
   }) async {
     if (bidAmount <= 0) {
       throw ArgumentError('bidAmount must be positive');
@@ -30,6 +31,9 @@ class BidsFirestoreDataSource {
     final sideId = matchBidTeamDocumentId.trim();
     if (bidderId.isEmpty || sideId.isEmpty) {
       throw ArgumentError('Team document ids are required');
+    }
+    if (payoutOdds <= 0 || !payoutOdds.isFinite) {
+      throw ArgumentError.value(payoutOdds, 'payoutOdds', 'must be a positive finite multiplier');
     }
     await _db.runTransaction((txn) async {
       final teamRef = _db.collection(TeamsFirestoreDataSource.collectionName).doc(bidderId);
@@ -50,6 +54,7 @@ class BidsFirestoreDataSource {
         'created_at': FieldValue.serverTimestamp(),
         'match_bid_id': sideId,
         'bid_amount': bidAmount,
+        'payout_odds': payoutOdds,
         'result': 'pending',
       });
       txn.update(teamRef, {'balance': balance - bidAmount});
