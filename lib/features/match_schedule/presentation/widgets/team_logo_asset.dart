@@ -114,7 +114,7 @@ class TeamLogoAsset extends StatelessWidget {
         width: size,
         height: size,
         fit: fit,
-        errorBuilder: (_, _, _) => fallback,
+        errorBuilder: (context, error, stackTrace) => fallback,
         gaplessPlayback: true,
       );
     }
