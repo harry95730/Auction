@@ -7,6 +7,7 @@ import '../../../teams/domain/entities/team.dart';
 import '../../../teams/domain/repositories/team_repository.dart';
 import '../../../users/data/datasources/users_firestore_data_source.dart';
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../../app/widgets/auction_command_app_bar.dart';
 
 /// Admin-only: create and edit matches in Firestore `matches`. [users] `admin: true` gates access.
@@ -433,20 +434,20 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
     final t2 = _team2;
     if (t1 == null || t2 == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Select both teams')),
+        AppSnackBars.warning('Select both teams'),
       );
       return;
     }
     if (_isSameTeam(t1, t2)) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('A team cannot play itself — pick two different squads')),
+        AppSnackBars.warning('A team cannot play itself — pick two different squads'),
       );
       return;
     }
     final when = _scheduledAt;
     if (when == null) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Pick date and time')),
+        AppSnackBars.warning('Pick date and time'),
       );
       return;
     }
@@ -464,7 +465,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
       final pick = _effectiveVenueDropdownValue ?? _selectedVenue;
       if (pick == null || pick.trim().isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('Select a venue')),
+          AppSnackBars.warning('Select a venue'),
         );
         return;
       }
@@ -473,9 +474,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
       venueStr = _venueController.text.trim();
       if (venueStr.isEmpty) {
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(
-            content: Text('Enter a venue (no venues on IPL team documents yet)'),
-          ),
+          AppSnackBars.warning('Enter a venue (no venues on IPL team documents yet)'),
         );
         return;
       }
@@ -483,9 +482,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
 
     if (_bidMin >= _bidMax) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Bid range: minimum must be less than maximum'),
-        ),
+        AppSnackBars.warning('Bid range: minimum must be less than maximum'),
       );
       return;
     }
@@ -513,7 +510,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Fixture updated')),
+            AppSnackBars.success('Fixture updated'),
           );
         }
       } else {
@@ -534,7 +531,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
         );
         if (mounted) {
           ScaffoldMessenger.of(context).showSnackBar(
-            const SnackBar(content: Text('Match scheduled')),
+            AppSnackBars.success('Match scheduled'),
           );
         }
       }
@@ -542,7 +539,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Failed: $e')),
+          AppSnackBars.warning('Failed: $e'),
         );
       }
     } finally {

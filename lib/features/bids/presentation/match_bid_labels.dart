@@ -28,6 +28,16 @@ int pickedSideIndexForMatch(Match match, String pickedDocumentId) {
 
 bool isMatchScheduleLocked(Match m) => (m.status ?? '').toUpperCase().contains('LOCKED');
 
+/// **true** when local time is **on or after** (match start − 30 minutes). New bids are not allowed.
+/// If [Match.matchDate] is null, returns **false** (no cutoff applied).
+bool isMatchBiddingCutoffReached(Match m) {
+  final raw = m.matchDate;
+  if (raw == null) return false;
+  final startLocal = raw.toLocal();
+  final biddingClosesAt = startLocal.subtract(const Duration(minutes: 30));
+  return !DateTime.now().isBefore(biddingClosesAt);
+}
+
 /// Match finished / result known — UI uses yellow border and results CTA.
 bool isMatchCompleted(Match m) {
   final s = (m.status ?? '').toUpperCase();

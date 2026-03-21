@@ -33,12 +33,14 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
     final scheduleLocked = isMatchScheduleLocked(match);
     final completed = isMatchCompleted(match);
     final winnerSide = matchCompletedWinnerSide(match);
+    final biddingCutoff = isMatchBiddingCutoffReached(match);
     final bid = myBid;
     final userHasBid = bid != null;
     final pickedName = userHasBid ? pickedTeamDisplayName(match, bid) : '';
     final pickedSide = userHasBid ? pickedSideIndexForMatch(match, bid.matchBidTeamDocumentId) : -1;
-    /// Dim card for schedule lock without bid (not when user bid, not when completed).
-    final cardMuted = scheduleLocked && !userHasBid && !completed;
+    /// Dim card when locked or pre-match cutoff without a bid (not when user bid, not when completed).
+    final cardMuted = !userHasBid && !completed && (scheduleLocked || biddingCutoff);
+    final dimTeams = cardMuted;
 
     final card = Container(
       width: double.infinity,
@@ -82,7 +84,9 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                       ? 'Final'
                       : userHasBid
                           ? 'Bid placed'
-                          : (scheduleLocked ? 'Bidding closed' : _timeCaption(match)),
+                          : (scheduleLocked
+                              ? 'Bidding closed'
+                              : (biddingCutoff ? 'Bidding closed' : _timeCaption(match))),
                   textAlign: TextAlign.end,
                   style: TextStyle(
                     color: completed
@@ -108,7 +112,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                   match.team1Id,
                   match.team1,
                   0,
-                  desaturate: scheduleLocked && !userHasBid && !completed,
+                  desaturate: dimTeams,
                   highlightPick: pickedSide == 0,
                   highlightAmber: userHasBid,
                   highlightWinnerGreen: winnerSide == 0,
@@ -131,7 +135,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                   match.team2Id,
                   match.team2,
                   1,
-                  desaturate: scheduleLocked && !userHasBid && !completed,
+                  desaturate: dimTeams,
                   highlightPick: pickedSide == 1,
                   highlightAmber: userHasBid,
                   highlightWinnerGreen: winnerSide == 1,
@@ -146,6 +150,8 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
             _buildUserBidLockedCta(pickedName)
           else if (scheduleLocked)
             _buildLockedCtaPlaceholder()
+          else if (biddingCutoff)
+            _buildCutoffCtaPlaceholder()
           else
             Container(
               width: double.infinity,
@@ -264,6 +270,23 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
             fontWeight: FontWeight.bold,
             letterSpacing: 1.0,
             fontSize: 14,
+          ),
+        ),
+      ),
+    );
+  }
+
+  static Widget _buildCutoffCtaPlaceholder() {
+    return SizedBox(
+      height: 55,
+      child: Center(
+        child: Text(
+          'BIDDING CLOSED',
+          style: TextStyle(
+            color: Colors.orange.shade200.withValues(alpha: 0.9),
+            fontWeight: FontWeight.bold,
+            letterSpacing: 1.0,
+            fontSize: 13,
           ),
         ),
       ),

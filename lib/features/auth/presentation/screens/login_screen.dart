@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 import 'package:google_sign_in/google_sign_in.dart';
 
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../teams/domain/entities/team.dart';
 import '../../../users/domain/repositories/user_profile_repository.dart';
 import '../widgets/dotted_background.dart';
@@ -75,7 +76,7 @@ class _LoginScreenState extends State<LoginScreen> {
     final password = _passwordController.text;
     if (rawLogin.isEmpty || password.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Enter team name or email and password')),
+        AppSnackBars.warning('Enter team name or email and password'),
       );
       return;
     }
@@ -93,7 +94,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Profile sync issue: $e')),
+              AppSnackBars.warning('Profile sync issue: $e'),
             );
           }
         }
@@ -103,12 +104,12 @@ class _LoginScreenState extends State<LoginScreen> {
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Sign-in failed (${e.code})')),
+        AppSnackBars.warning(e.message ?? 'Sign-in failed (${e.code})'),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Sign-in failed: $e')),
+        AppSnackBars.warning('Sign-in failed: $e'),
       );
     } finally {
       if (mounted) setState(() => _signingIn = false);
@@ -132,7 +133,7 @@ class _LoginScreenState extends State<LoginScreen> {
         } catch (e) {
           if (mounted) {
             ScaffoldMessenger.of(context).showSnackBar(
-              SnackBar(content: Text('Profile sync issue: $e')),
+              AppSnackBars.warning('Profile sync issue: $e'),
             );
           }
         }
@@ -146,17 +147,17 @@ class _LoginScreenState extends State<LoginScreen> {
       }
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google sign-in: ${e.description ?? e.code.name}')),
+        AppSnackBars.warning('Google sign-in: ${e.description ?? e.code.name}'),
       );
     } on FirebaseAuthException catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text(e.message ?? 'Google sign-in failed (${e.code})')),
+        AppSnackBars.warning(e.message ?? 'Google sign-in failed (${e.code})'),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Google sign-in failed: $e')),
+        AppSnackBars.warning('Google sign-in failed: $e'),
       );
     } finally {
       if (mounted) setState(() => _signingIn = false);
