@@ -55,6 +55,19 @@ class TeamsFirestoreDataSource {
     return snap.docs.map((d) => TeamModel.fromFirestore(d.data(), d.id)).toList();
   }
 
+  /// Live updates when any team in [tournament] changes (balance, rank, etc.).
+  /// If [tournament] is null or empty, watches the full `teams` collection.
+  Stream<List<TeamModel>> watchTeams({String? tournament}) {
+    final t = tournament?.trim() ?? '';
+    Query<Map<String, dynamic>> q = _db.collection(collectionName);
+    if (t.isNotEmpty) {
+      q = q.where('tournament', isEqualTo: t);
+    }
+    return q.snapshots().map(
+          (snap) => snap.docs.map((d) => TeamModel.fromFirestore(d.data(), d.id)).toList(),
+        );
+  }
+
   /// [teamId] matches document field `team_id` (e.g. "MI").
   Future<TeamModel?> fetchByTeamId(String teamId) async {
     final trimmed = teamId.trim();

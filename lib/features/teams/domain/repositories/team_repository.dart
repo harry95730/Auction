@@ -4,6 +4,9 @@ abstract class TeamRepository {
   /// When [tournament] is set (e.g. `CGI`), only those teams are returned.
   Future<List<Team>> getAllTeams({String? tournament});
 
+  /// Same filter as [getAllTeams]; emits again when any matching team document changes.
+  Stream<List<Team>> watchTeams({String? tournament});
+
   Future<Team?> getByTeamId(String teamId);
 
   Stream<Team?> watchByDocumentId(String documentId);

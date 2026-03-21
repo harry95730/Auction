@@ -50,6 +50,17 @@ class UsersFirestoreDataSource {
     await ref.update(update);
   }
 
+  /// `users/{uid}.admin` — when `true`, client may show admin match management (enforce in Firestore rules too).
+  Stream<bool> watchIsAdmin(String uid) {
+    return _db.collection(collectionName).doc(uid).snapshots().map((snap) {
+      if (!snap.exists) return false;
+      final v = snap.data()?['admin'];
+      if (v is bool) return v;
+      if (v is String) return v.toLowerCase() == 'true';
+      return false;
+    });
+  }
+
   /// Live `users/{uid}` fields used to resolve the signed-in user's team.
   Stream<UserTeamPointers> watchTeamPointersForUid(String uid) {
     return _db.collection(collectionName).doc(uid).snapshots().map((snap) {

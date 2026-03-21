@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../bids/domain/entities/recent_bid.dart';
+import '../../../bids/presentation/match_bid_labels.dart';
 import '../../../match_schedule/domain/entities/match.dart';
 
 /// “Recent Bids” card — dark navy styling; [bids] already capped (e.g. 3).
@@ -110,6 +111,8 @@ class RecentBidRow extends StatelessWidget {
     final role = _roleLine(bid);
     final status = _statusPresentation(bid.result);
     final price = '₹ ${_formatMoney(bid.bidAmount)}';
+    final odds = effectivePayoutOddsForBid(bid, match);
+    final potentialWin = odds != null ? bid.bidAmount * odds : null;
 
     return Column(
       children: [
@@ -151,6 +154,25 @@ class RecentBidRow extends StatelessWidget {
                         letterSpacing: 0.5,
                       ),
                     ),
+                    if (odds != null) ...[
+                      const SizedBox(height: 6),
+                      Text(
+                        '@ ${odds.toStringAsFixed(2)}× on your pick',
+                        style: TextStyle(
+                          color: Colors.green.shade300,
+                          fontSize: 12,
+                          fontWeight: FontWeight.w600,
+                        ),
+                      ),
+                      if (potentialWin != null)
+                        Text(
+                          'If win: ₹ ${_formatMoney(potentialWin)}',
+                          style: TextStyle(
+                            color: Colors.white.withValues(alpha: 0.45),
+                            fontSize: 11,
+                          ),
+                        ),
+                    ],
                   ],
                 ),
               ),

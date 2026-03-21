@@ -57,7 +57,8 @@ class AuctionBiddingPanel extends StatefulWidget {
   final bool isAuthenticated;
   final bool hasTeam;
 
-  final Future<void> Function(double bidAmount, String matchBidTeamDocumentId)? onPlaceBid;
+  /// [payoutOdds] is the multiplier locked for this pick (stored on the bid as `payout_odds`).
+  final Future<void> Function(double bidAmount, String matchBidTeamDocumentId, double payoutOdds)? onPlaceBid;
 
   /// If set, this team already has a `bids` row for this match — UI is read-only.
   final ExistingMatchBid? existingBid;
@@ -110,12 +111,21 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
     return a != null && a.isNotEmpty && b != null && b.isNotEmpty;
   }
 
-  /// Single Firestore decimal multiplier (e.g. 2 or 5).
-  double get _decimalOdds {
-    final o = _m.odds;
-    if (o != null && o > 0) return o;
+  /// Payout multiplier for one side — Firestore `odds` is `[team1, team2]`.
+  double _oddsForSide(int sideIndex) {
+    assert(sideIndex == 0 || sideIndex == 1);
+    final list = _m.odds;
+    if (list != null && list.length >= 2) {
+      final o = list[sideIndex];
+      if (o > 0) return o;
+    } else if (list != null && list.length == 1 && list[0] > 0) {
+      return list[0];
+    }
     return 2.5;
   }
+
+  /// Payout multiplier for the currently selected side.
+  double get _decimalOdds => _oddsForSide(_selectedTeam);
 
   double get _potentialReturn => _bidAmount * _decimalOdds;
 
@@ -197,7 +207,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
 
     setState(() => _placing = true);
     try {
-      await cb(_bidAmount, matchBidId);
+      await cb(_bidAmount, matchBidId, _decimalOdds);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(
@@ -298,7 +308,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             _m.team1Id,
             _m.team1,
             widget.team1Color,
-            _decimalOdds,
+            _oddsForSide(0),
             _selectedTeam == 0,
             _bidAlreadyPlaced ? null : () => setState(() => _selectedTeam = 0),
           ),
@@ -308,7 +318,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             _m.team2Id,
             _m.team2,
             widget.team2Color,
-            _decimalOdds,
+            _oddsForSide(1),
             _selectedTeam == 1,
             _bidAlreadyPlaced ? null : () => setState(() => _selectedTeam = 1),
           ),
@@ -680,8 +690,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
                 const SizedBox(width: 10),
                 Expanded(
                   child: Text(
-                    'If your pick wins: payout = stake × ${_decimalOdds.toStringAsFixed(2)}.\n'
-                    'If your pick loses: you lose your stake (the full bid amount).',
+                    'If your pick wins: payout = stake × ${_decimalOdds.toStringAsFixed(2)}.',
                     style: const TextStyle(color: Colors.white70, fontSize: 10, height: 1.35),
                   ),
                 ),

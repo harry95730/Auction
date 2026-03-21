@@ -43,7 +43,7 @@ class _AuctionLeaderboardScreenState extends State<AuctionLeaderboardScreen> {
   late final TeamRepository _teamRepo;
   late final MatchScheduleRepository _matchRepo;
   late final BidsRepository _bidsRepo;
-  late final Future<List<Team>> _teamsFuture;
+  late final Stream<List<Team>> _teamsStream;
   late final UsersFirestoreDataSource _usersDs;
 
   @override
@@ -54,7 +54,7 @@ class _AuctionLeaderboardScreenState extends State<AuctionLeaderboardScreen> {
         MatchScheduleRepositoryImpl(MatchScheduleFirestoreDataSource());
     _bidsRepo = widget.bidsRepository ?? BidsRepositoryImpl(BidsFirestoreDataSource());
     _usersDs = UsersFirestoreDataSource();
-    _teamsFuture = _teamRepo.getAllTeams(tournament: widget.tournament);
+    _teamsStream = _teamRepo.watchTeams(tournament: widget.tournament);
   }
 
   void _openTeamBids(BuildContext context, Team team) {
@@ -117,12 +117,9 @@ class _AuctionLeaderboardScreenState extends State<AuctionLeaderboardScreen> {
         backgroundColor: Colors.transparent,
         accentColor: AppColors.neonGreen,
       ),
-      body: FutureBuilder<List<Team>>(
-        future: _teamsFuture,
+      body: StreamBuilder<List<Team>>(
+        stream: _teamsStream,
         builder: (context, snap) {
-          if (snap.connectionState != ConnectionState.done) {
-            return const Center(child: CircularProgressIndicator(color: AppColors.neonGreen));
-          }
           if (snap.hasError) {
             return Center(
               child: Padding(
@@ -135,8 +132,11 @@ class _AuctionLeaderboardScreenState extends State<AuctionLeaderboardScreen> {
               ),
             );
           }
+          if (!snap.hasData) {
+            return const Center(child: CircularProgressIndicator(color: AppColors.neonGreen));
+          }
 
-          final teams = _sortedByPoints(snap.data ?? []);
+          final teams = _sortedByPoints(snap.data!);
 
           return StreamBuilder<User?>(
             stream: FirebaseAuth.instance.authStateChanges(),

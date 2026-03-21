@@ -34,13 +34,25 @@ class RecentBidsHistoryScreen extends StatelessWidget {
         title: appBarTitle ?? 'HISTORY',
         backgroundColor: Colors.transparent,
       ),
-      body: FutureBuilder<List<Match>>(
-        future: matchScheduleRepository.getMatches(),
+      body: StreamBuilder<List<Match>>(
+        stream: matchScheduleRepository.watchMatches(),
         builder: (context, matchSnap) {
-          if (matchSnap.connectionState == ConnectionState.waiting) {
+          if (matchSnap.hasError) {
+            return Center(
+              child: Padding(
+                padding: const EdgeInsets.all(24),
+                child: Text(
+                  'Could not load matches',
+                  style: TextStyle(color: Colors.red.shade300),
+                  textAlign: TextAlign.center,
+                ),
+              ),
+            );
+          }
+          if (!matchSnap.hasData) {
             return const Center(child: CircularProgressIndicator(color: Color(0xFF2ECC71)));
           }
-          final byId = {for (final m in matchSnap.data ?? []) m.documentId: m};
+          final byId = {for (final m in matchSnap.data!) m.documentId: m};
 
           return StreamBuilder<List<RecentBid>>(
             stream: bidsRepository.watchBidsForTeam(teamDocumentId: teamDocumentId, limit: 100),

@@ -40,6 +40,6 @@ class Match {
   final String? result;
   final String? toss;
 
-  /// Firestore `odds` (e.g. `2` or `5`) — decimal **payout multiplier** on the winning pick.
-  final double? odds;
+  /// Firestore `odds`: list of two payout multipliers — **[0] team1/home, [1] team2/away]**.
+  final List<double>? odds;
 }

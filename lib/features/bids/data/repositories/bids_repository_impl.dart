@@ -15,12 +15,14 @@ class BidsRepositoryImpl implements BidsRepository {
     required String matchDocumentId,
     required String matchBidTeamDocumentId,
     required double bidAmount,
+    required double payoutOdds,
   }) {
     return _dataSource.placeBid(
       bidderTeamDocumentId: bidderTeamDocumentId,
       matchDocumentId: matchDocumentId,
       matchBidTeamDocumentId: matchBidTeamDocumentId,
       bidAmount: bidAmount,
+      payoutOdds: payoutOdds,
     );
   }
 

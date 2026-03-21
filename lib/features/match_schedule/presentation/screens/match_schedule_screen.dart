@@ -100,12 +100,9 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
               _buildFilterTabs(),
               const SizedBox(height: 20),
               Expanded(
-                child: FutureBuilder<List<Match>>(
-                  future: widget.repository.getMatches(),
+                child: StreamBuilder<List<Match>>(
+                  stream: widget.repository.watchMatches(),
                   builder: (context, snapshot) {
-                    if (snapshot.connectionState == ConnectionState.waiting) {
-                      return const Center(child: CircularProgressIndicator(color: AppColors.neonGreen));
-                    }
                     if (snapshot.hasError) {
                       return Center(
                         child: Text(
@@ -114,7 +111,10 @@ class _MatchScheduleScreenState extends State<MatchScheduleScreen> {
                         ),
                       );
                     }
-                    final raw = snapshot.data ?? [];
+                    if (!snapshot.hasData) {
+                      return const Center(child: CircularProgressIndicator(color: AppColors.neonGreen));
+                    }
+                    final raw = snapshot.data!;
                     final sorted = _sortedByDate(raw);
                     final now = DateTime.now();
 
