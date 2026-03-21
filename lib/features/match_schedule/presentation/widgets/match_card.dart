@@ -39,29 +39,28 @@ class MatchCard extends StatelessWidget {
     return '${lo.toStringAsFixed(0)} – ${hi.toStringAsFixed(0)}';
   }
 
-  /// Winning side for yellow highlight: `0` team1, `1` team2, `null` unknown.
-  static int? _winningSide(Match m) {
-    if (!isMatchCompleted(m)) return null;
-    final r = (m.result ?? '').toUpperCase();
-    if (r.isEmpty) return null;
-    final t1 = (m.team1 ?? '').trim();
-    final t2 = (m.team2 ?? '').trim();
-    if (t1.isNotEmpty) {
-      for (final w in t1.split(RegExp(r'\s+'))) {
-        if (w.length >= 3 && r.contains(w.toUpperCase())) return 0;
-      }
+  Widget _oddsInlineRow(List<double>? odds, TextStyle style) {
+    if (odds == null || odds.isEmpty) {
+      return Text('Odds —', style: style);
     }
-    if (t2.isNotEmpty) {
-      for (final w in t2.split(RegExp(r'\s+'))) {
-        if (w.length >= 3 && r.contains(w.toUpperCase())) return 1;
-      }
+    if (odds.length >= 2) {
+      return Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Text('Odds ', style: style),
+          Text(odds[0].toStringAsFixed(2), style: style.copyWith(fontWeight: FontWeight.w600)),
+          Text('  ·  ', style: style),
+          Text(odds[1].toStringAsFixed(2), style: style.copyWith(fontWeight: FontWeight.w600)),
+        ],
+      );
     }
-    return null;
+    return Text('Odds ${odds[0].toStringAsFixed(2)}', style: style);
   }
 
   Color _statusColor() {
     final s = (match.status ?? '').toUpperCase();
     if (s == 'OPEN' || s == 'LIVE') return AppColors.neonGreen;
+    if (s.contains('LOCK')) return Colors.orange.shade300;
     if (s == 'CLOSED' || s == 'COMPLETED') return Colors.white38;
     return Colors.amber.shade200;
   }
@@ -79,7 +78,7 @@ class MatchCard extends StatelessWidget {
         userHasBid ? pickedSideIndexForMatch(match, bid.matchBidTeamDocumentId) : -1;
     final scheduleLocked = isMatchScheduleLocked(match);
     final completed = isMatchCompleted(match);
-    final winnerSide = _winningSide(match);
+    final winnerSide = matchCompletedWinnerSide(match);
     final greyNoBidLocked = scheduleLocked && !userHasBid && !completed;
 
     final cardBg = const Color(0xFF1A1D26);
@@ -128,7 +127,7 @@ class MatchCard extends StatelessWidget {
                         0,
                         alignEnd: false,
                         highlightPick: pickedSide == 0,
-                        highlightWinner: completed && winnerSide == 0,
+                        highlightWinner: winnerSide == 0,
                         muted: greyNoBidLocked,
                       ),
                     ),
@@ -151,7 +150,7 @@ class MatchCard extends StatelessWidget {
                         1,
                         alignEnd: true,
                         highlightPick: pickedSide == 1,
-                        highlightWinner: completed && winnerSide == 1,
+                        highlightWinner: winnerSide == 1,
                         muted: greyNoBidLocked,
                       ),
                     ),
@@ -221,9 +220,9 @@ class MatchCard extends StatelessWidget {
                       fontSize: 11,
                     ),
                   ),
-                  Text(
-                    'Odds ${match.odds != null ? match.odds!.toStringAsFixed(2) : '—'}',
-                    style: TextStyle(
+                  _oddsInlineRow(
+                    match.odds,
+                    TextStyle(
                       color: greyNoBidLocked ? Colors.white30 : Colors.white38,
                       fontSize: 11,
                     ),
@@ -447,7 +446,6 @@ class MatchCard extends StatelessWidget {
   }) {
     final label = (name == null || name.trim().isEmpty) ? 'TBD' : name.trim();
     final parts = label.split(' ');
-    final cross = alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start;
     final visual = _teamVisualForCard(name, side);
 
     Color nameColor;
@@ -456,7 +454,7 @@ class MatchCard extends StatelessWidget {
       nameColor = Colors.white54;
       weight = FontWeight.w600;
     } else if (highlightWinner) {
-      nameColor = Colors.yellow.shade400;
+      nameColor = AppColors.neonGreen;
       weight = FontWeight.w900;
     } else if (highlightPick) {
       nameColor = Colors.amber.shade200;
@@ -489,24 +487,51 @@ class MatchCard extends StatelessWidget {
     );
 
     return Column(
-      crossAxisAlignment: cross,
+      crossAxisAlignment: alignEnd ? CrossAxisAlignment.end : CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        TeamLogoAsset(
-          teamId: teamId,
-          teamDisplayName: name,
-          size: 36,
-          borderRadius: 6,
-          desaturate: muted,
-          fallback: fallbackLogo,
+        Container(
+          padding: highlightWinner ? const EdgeInsets.all(2) : EdgeInsets.zero,
+          decoration: highlightWinner
+              ? BoxDecoration(
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: AppColors.neonGreen, width: 2),
+                  boxShadow: [
+                    BoxShadow(
+                      color: AppColors.neonGreen.withValues(alpha: 0.35),
+                      blurRadius: 8,
+                    ),
+                  ],
+                )
+              : null,
+          child: TeamLogoAsset(
+            teamId: teamId,
+            teamDisplayName: name,
+            size: 36,
+            borderRadius: 6,
+            desaturate: muted,
+            fallback: fallbackLogo,
+          ),
         ),
         const SizedBox(height: 6),
-        Text(
-          parts[0],
-          style: baseStyle,
-          overflow: TextOverflow.ellipsis,
-          maxLines: 1,
-          textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+        Row(
+          mainAxisSize: MainAxisSize.max,
+          mainAxisAlignment: alignEnd ? MainAxisAlignment.end : MainAxisAlignment.start,
+          children: [
+            Flexible(
+              child: Text(
+                parts[0],
+                style: baseStyle,
+                overflow: TextOverflow.ellipsis,
+                maxLines: 1,
+                textAlign: alignEnd ? TextAlign.end : TextAlign.start,
+              ),
+            ),
+            if (highlightWinner) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.check_circle, color: AppColors.neonGreen, size: 16),
+            ],
+          ],
         ),
         Text(
           parts.length > 1 ? parts[1] : '',

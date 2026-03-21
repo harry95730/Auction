@@ -10,6 +10,7 @@ class Team {
     this.players,
     this.logoUrl,
     this.homeGround,
+    this.venue,
     this.tournament,
     this.season,
     this.owner,
@@ -34,6 +35,8 @@ class Team {
   final List<String>? players;
   final String? logoUrl;
   final String? homeGround;
+  /// Firestore `venue` (display name); [homeGround] maps `home_ground`.
+  final String? venue;
   final String? tournament;
   final int? season;
   final String? owner;

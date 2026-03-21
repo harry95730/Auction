@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_colors.dart';
 import '../../../bids/domain/entities/existing_match_bid.dart';
 import '../../../bids/presentation/match_bid_labels.dart';
 import '../../../match_schedule/domain/entities/match.dart';
@@ -31,6 +32,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
     final status = _statusPresentation(match);
     final scheduleLocked = isMatchScheduleLocked(match);
     final completed = isMatchCompleted(match);
+    final winnerSide = matchCompletedWinnerSide(match);
     final bid = myBid;
     final userHasBid = bid != null;
     final pickedName = userHasBid ? pickedTeamDisplayName(match, bid) : '';
@@ -109,6 +111,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                   desaturate: scheduleLocked && !userHasBid && !completed,
                   highlightPick: pickedSide == 0,
                   highlightAmber: userHasBid,
+                  highlightWinnerGreen: winnerSide == 0,
                 ),
               ),
               Padding(
@@ -131,6 +134,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                   desaturate: scheduleLocked && !userHasBid && !completed,
                   highlightPick: pickedSide == 1,
                   highlightAmber: userHasBid,
+                  highlightWinnerGreen: winnerSide == 1,
                 ),
               ),
             ],
@@ -274,6 +278,7 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
     required bool desaturate,
     bool highlightPick = false,
     bool highlightAmber = false,
+    bool highlightWinnerGreen = false,
   }) {
     final style = _teamVisual(displayName, side);
     final fallbackIcon = Icon(
@@ -286,6 +291,15 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
           teamDisplayName: teamNameForLogo,
         ) !=
         null;
+    final borderColor = highlightWinnerGreen
+        ? AppColors.neonGreen
+        : (highlightPick
+            ? (highlightAmber ? Colors.amber.shade400 : const Color(0xFF4ADE80))
+            : null);
+    final shadowColor = highlightWinnerGreen
+        ? AppColors.neonGreen
+        : (highlightPick ? (highlightAmber ? Colors.amber : const Color(0xFF4ADE80)) : null);
+
     return Column(
       children: [
         Container(
@@ -296,17 +310,11 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
                 ? (desaturate ? Color.lerp(style.bg, const Color(0xFF374151), 0.55)! : style.bg)
                 : Colors.black.withValues(alpha: 0.2),
             borderRadius: BorderRadius.circular(8),
-            border: highlightPick
-                ? Border.all(
-                    color: highlightAmber ? Colors.amber.shade400 : const Color(0xFF4ADE80),
-                    width: 2.5,
-                  )
-                : null,
-            boxShadow: highlightPick
+            border: borderColor != null ? Border.all(color: borderColor, width: 2.5) : null,
+            boxShadow: shadowColor != null
                 ? [
                     BoxShadow(
-                      color: (highlightAmber ? Colors.amber : const Color(0xFF4ADE80))
-                          .withValues(alpha: 0.35),
+                      color: shadowColor.withValues(alpha: 0.35),
                       blurRadius: 10,
                     ),
                   ]
@@ -323,18 +331,32 @@ class AuctionUpcomingMatchCard extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        Text(
-          displayName,
-          style: TextStyle(
-            color: desaturate
-                ? Colors.grey[500]
-                : (highlightPick && highlightAmber ? Colors.amber.shade200 : Colors.white),
-            fontWeight: FontWeight.bold,
-            fontSize: 13,
-          ),
-          textAlign: TextAlign.center,
-          maxLines: 2,
-          overflow: TextOverflow.ellipsis,
+        Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Flexible(
+              child: Text(
+                displayName,
+                style: TextStyle(
+                  color: desaturate
+                      ? Colors.grey[500]
+                      : (highlightWinnerGreen
+                          ? AppColors.neonGreen
+                          : (highlightPick && highlightAmber ? Colors.amber.shade200 : Colors.white)),
+                  fontWeight: FontWeight.bold,
+                  fontSize: 13,
+                ),
+                textAlign: TextAlign.center,
+                maxLines: 2,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+            if (highlightWinnerGreen) ...[
+              const SizedBox(width: 4),
+              Icon(Icons.check_circle, color: AppColors.neonGreen, size: 16),
+            ],
+          ],
         ),
       ],
     );

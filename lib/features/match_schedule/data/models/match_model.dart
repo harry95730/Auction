@@ -39,7 +39,7 @@ class MatchModel {
   final List<double>? bidRange;
   final String? result;
   final String? toss;
-  final double? odds;
+  final List<double>? odds;
 
   factory MatchModel.fromFirestore(Map<String, dynamic> raw, String documentId) {
     final m = raw;
@@ -66,7 +66,7 @@ class MatchModel {
       bidRange: _parseBidRangeNullable(_firstOf(m, ['bid_range', 'bidRange'])),
       result: _strNullable(m, ['result']),
       toss: _strNullable(m, ['toss']),
-      odds: _parsePositiveDoubleNullable(_firstOf(m, ['odds'])),
+      odds: _parseOddsList(_firstOf(m, ['odds'])),
     );
   }
 
@@ -272,6 +272,24 @@ double? _parsePositiveDoubleNullable(dynamic v) {
   final d = _parseDoubleNullable(v);
   if (d == null || d.isNaN || d.isInfinite || d <= 0) return null;
   return d;
+}
+
+/// Firestore `odds`: **two** multipliers [team1/home, team2/away]. Legacy single number → `[x, x]`.
+List<double>? _parseOddsList(dynamic v) {
+  if (v == null) return null;
+  if (v is List) {
+    final out = <double>[];
+    for (final e in v) {
+      final d = _parsePositiveDoubleNullable(e);
+      if (d != null) out.add(d);
+    }
+    if (out.isEmpty) return null;
+    if (out.length == 1) return [out[0], out[0]];
+    return [out[0], out[1]];
+  }
+  final single = _parsePositiveDoubleNullable(v);
+  if (single != null) return [single, single];
+  return null;
 }
 
 int? _parseIntNullable(dynamic v) {

@@ -4,6 +4,15 @@ A Flutter project.
 
 ---
 
+## Admin — create & edit matches
+
+Admins use the same login as everyone else. Access is controlled by the Firestore field **`users/{uid}.admin`** (boolean). When `admin` is `true`, a **MATCH MGMT** floating action button appears on the main shell; it opens **Match Management** where you can create fixtures and edit existing matches (stored in the **`matches`** collection). Home/away team pickers load only teams whose Firestore field **`tournament`** is **`IPL`**. A team cannot be selected as both sides (e.g. Mumbai vs Mumbai). Each fixture stores **`odds`** as a **list of two** payout multipliers — `[home, away]` for team 1 and team 2 (e.g. `[2.0, 1.85]`). **Venue** in match management is chosen from distinct **`venue`** (or `home_ground`) values on **IPL** team documents; **`status`** is one of **`OPEN`**, **`LOCKED`**, **`COMPLETED`**. New matches default to **`tournament`: `IPL`**, **`season`: `2026`**, **`result`** omitted until set (UI: Pending / selected home & away team names / Draw). **`bid_range`** is stored as **`[min, max]`** (₹) with **min &lt; max**, chosen in the admin form from **₹100–₹2000** in steps of **₹100**. Payout multipliers in the form are **0.25×** steps from **1.00×** to **15.00×**.
+
+- **Grant admin:** in Firebase Console → Firestore → `users` → your user document → set **`admin`: `true`** (create the field if missing). New users still default to `admin: false` in code.
+- **Security:** restrict `matches` writes in **Firestore rules** to authenticated users whose user document has `admin == true`. Client-side checks are not enough on their own.
+
+---
+
 ## Android release signing (do this first for a signed APK / App Bundle)
 
 Play Store and production installs require a **release-signed** artifact. The **first setup step** is creating an upload keystore and wiring it through `key.properties`. Gradle then uses the signing config in `android/app/build.gradle.kts` (see excerpts below).
