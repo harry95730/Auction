@@ -47,26 +47,19 @@ android {
     }
 
     signingConfigs {
-        if (hasReleaseKeystore) {
-            create("release") {
-                keyAlias = keystoreProperties.getProperty("keyAlias")!!.trim()
-                keyPassword = keystoreProperties.getProperty("keyPassword")!!.trim()
-                storePassword = keystoreProperties.getProperty("storePassword")!!.trim()
-                storeFile = rootProject.file(keystoreProperties.getProperty("storeFile")!!.trim())
-            }
+        release {
+            keyAlias keystoreProperties['keyAlias']
+            keyPassword keystoreProperties['keyPassword']
+            storeFile file("app/" + keystoreProperties['storeFile'])
+            storePassword keystoreProperties['storePassword']
         }
     }
 
     buildTypes {
         release {
-            // Play Console rejects "debug-signed" bundles; release must not be debuggable.
-            isDebuggable = false
-            signingConfig =
-                if (hasReleaseKeystore) {
-                    signingConfigs.getByName("release")
-                } else {
-                    signingConfigs.getByName("debug")
-                }
+            signingConfig signingConfigs.release
+            minifyEnabled false
+            shrinkResources false
         }
     }
 }
