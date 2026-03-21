@@ -2,6 +2,7 @@ import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
 import '../../../../app/theme/app_colors.dart';
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../../app/widgets/auction_command_app_bar.dart';
 import '../../../bids/data/datasources/bids_firestore_data_source.dart';
 import '../../../bids/data/repositories/bids_repository_impl.dart';
@@ -64,7 +65,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
       WidgetsBinding.instance.addPostFrameCallback((_) {
         if (!mounted) return;
         ScaffoldMessenger.of(context).showSnackBar(
-          const SnackBar(content: Text('This match is locked. Bidding is not available.')),
+          AppSnackBars.warning('This match is locked. Bidding is not available.'),
         );
         Navigator.of(context).pop();
       });
@@ -121,7 +122,9 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
               ExistingMatchBid? existingBid,
               bool existingBidLoading = false,
             }) {
-              final locked = existingBid != null || isMatchScheduleLocked(m);
+              final locked = existingBid != null ||
+                  isMatchScheduleLocked(m) ||
+                  isMatchBiddingCutoffReached(m);
               return AuctionBiddingPanel(
                 match: m,
                 team1Name: team1Name,

@@ -1,8 +1,11 @@
+import 'dart:async';
 import 'dart:math' as math;
 
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../bids/domain/entities/existing_match_bid.dart';
+import '../../../bids/presentation/match_bid_labels.dart';
 import '../../../bids/domain/exceptions/insufficient_balance.dart';
 import '../../domain/entities/match.dart';
 import 'team_logo_asset.dart';
@@ -75,6 +78,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
   late double _bidAmount;
   static const double _step = 10;
   bool _placing = false;
+  Timer? _cutoffTicker;
 
   Match get _m => widget.match;
 
@@ -135,6 +139,18 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
     final mid = (_minBid + _maxBid) / 2;
     final em = _effectiveMaxBid;
     _bidAmount = em >= _minBid ? mid.clamp(_minBid, em) : _minBid;
+    if (widget.match.matchDate != null) {
+      _cutoffTicker = Timer.periodic(const Duration(seconds: 30), (_) {
+        if (!mounted) return;
+        setState(() {});
+      });
+    }
+  }
+
+  @override
+  void dispose() {
+    _cutoffTicker?.cancel();
+    super.dispose();
   }
 
   bool get _selectionValid {
@@ -144,9 +160,18 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
 
   bool get _bidAlreadyPlaced => widget.existingBid != null;
 
+  /// Cannot change side: already bid, or within 30 min of match start.
+  bool get _pickFrozen => _bidAlreadyPlaced || isMatchBiddingCutoffReached(widget.match);
+
+  bool get _bidAmountLocked => _pickFrozen;
+
+  /// Grey CTA (locked / closed).
+  bool get _bidCtaInactive => _bidAlreadyPlaced || isMatchBiddingCutoffReached(widget.match);
+
   bool get _confirmEnabled {
     if (widget.existingBidLoading) return false;
     if (_bidAlreadyPlaced) return false;
+    if (isMatchBiddingCutoffReached(widget.match)) return false;
     if (_placing) return false;
     if (!widget.isAuthenticated || !widget.hasTeam) return false;
     if (widget.onPlaceBid == null) return false;
@@ -210,21 +235,19 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
       await cb(_bidAmount, matchBidId, _decimalOdds);
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(
-            'Bid confirmed: ₹${_bidAmount.round()} on ${_selectedTeam == 0 ? widget.team1Code : widget.team2Code} @ ${_decimalOdds.toStringAsFixed(2)}x',
-          ),
+        AppSnackBars.success(
+          'Bid confirmed: ₹${_bidAmount.round()} on ${_selectedTeam == 0 ? widget.team1Code : widget.team2Code} @ ${_decimalOdds.toStringAsFixed(2)}x',
         ),
       );
     } on InsufficientBalanceException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('Insufficient balance for this bid.')),
+        AppSnackBars.warning('Insufficient balance for this bid.'),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not place bid: $e')),
+        AppSnackBars.warning('Could not place bid: $e'),
       );
     } finally {
       if (mounted) setState(() => _placing = false);
@@ -301,6 +324,29 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
                 ],
               ),
             ),
+          ] else if (isMatchBiddingCutoffReached(widget.match)) ...[
+            const SizedBox(height: 10),
+            Container(
+              width: double.infinity,
+              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.red.withValues(alpha: 0.08),
+                borderRadius: BorderRadius.circular(10),
+                border: Border.all(color: Colors.white24),
+              ),
+              child: Row(
+                children: [
+                  Icon(Icons.schedule, color: Colors.orange.shade200, size: 18),
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Text(
+                      'Bidding closes 30 minutes before match start. New bids are no longer accepted.',
+                      style: TextStyle(color: Colors.grey.shade400, fontSize: 11, height: 1.3),
+                    ),
+                  ),
+                ],
+              ),
+            ),
           ],
           const SizedBox(height: 10),
           _buildSelectionButton(
@@ -310,7 +356,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             widget.team1Color,
             _oddsForSide(0),
             _selectedTeam == 0,
-            _bidAlreadyPlaced ? null : () => setState(() => _selectedTeam = 0),
+            _pickFrozen ? null : () => setState(() => _selectedTeam = 0),
           ),
           const SizedBox(height: 12),
           _buildSelectionButton(
@@ -320,7 +366,7 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             widget.team2Color,
             _oddsForSide(1),
             _selectedTeam == 1,
-            _bidAlreadyPlaced ? null : () => setState(() => _selectedTeam = 1),
+            _pickFrozen ? null : () => setState(() => _selectedTeam = 1),
           ),
           const SizedBox(height: 24),
         ],
@@ -415,7 +461,9 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             mainAxisAlignment: MainAxisAlignment.spaceBetween,
             children: [
               Text(
-                _bidAlreadyPlaced ? 'YOUR BID (₹) — LOCKED' : 'BID AMOUNT (₹)',
+                _bidAlreadyPlaced
+                    ? 'YOUR BID (₹) — LOCKED'
+                    : (isMatchBiddingCutoffReached(widget.match) ? 'BID AMOUNT (₹) — CLOSED' : 'BID AMOUNT (₹)'),
                 style: const TextStyle(color: Colors.grey, fontSize: 11, fontWeight: FontWeight.bold),
               ),
               Container(
@@ -425,7 +473,9 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
                   borderRadius: BorderRadius.circular(4),
                 ),
                 child: Text(
-                  _bidAlreadyPlaced ? 'PLACED' : _limitLabel(),
+                  _bidAlreadyPlaced
+                      ? 'PLACED'
+                      : (isMatchBiddingCutoffReached(widget.match) ? 'CLOSED' : _limitLabel()),
                   style: const TextStyle(color: Colors.orangeAccent, fontSize: 9),
                 ),
               ),
@@ -445,13 +495,13 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
                 Row(
                   children: [
                     IconButton(
-                      onPressed: !_bidAlreadyPlaced && _bidAmount > _minBid ? () => _nudge(-_step) : null,
-                      icon: Icon(Icons.remove, color: _bidAlreadyPlaced ? Colors.grey.shade800 : Colors.grey),
+                      onPressed: !_bidAmountLocked && _bidAmount > _minBid ? () => _nudge(-_step) : null,
+                      icon: Icon(Icons.remove, color: _bidAmountLocked ? Colors.grey.shade800 : Colors.grey),
                     ),
                     const SizedBox(width: 8),
                     IconButton(
-                      onPressed: !_bidAlreadyPlaced && _bidAmount < _effectiveMaxBid ? () => _nudge(_step) : null,
-                      icon: Icon(Icons.add, color: _bidAlreadyPlaced ? Colors.grey.shade800 : Colors.white),
+                      onPressed: !_bidAmountLocked && _bidAmount < _effectiveMaxBid ? () => _nudge(_step) : null,
+                      icon: Icon(Icons.add, color: _bidAmountLocked ? Colors.grey.shade800 : Colors.white),
                     ),
                   ],
                 ),
@@ -494,12 +544,12 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
             width: double.infinity,
             height: 60,
             decoration: BoxDecoration(
-              gradient: _bidAlreadyPlaced
+              gradient: _bidCtaInactive
                   ? null
                   : const LinearGradient(colors: [Color(0xFF81C784), Color(0xFF4CAF50)]),
-              color: _bidAlreadyPlaced ? const Color(0xFF2C3235) : null,
+              color: _bidCtaInactive ? const Color(0xFF2C3235) : null,
               borderRadius: BorderRadius.circular(16),
-              boxShadow: _bidAlreadyPlaced
+              boxShadow: _bidCtaInactive
                   ? null
                   : [
                       BoxShadow(
@@ -525,16 +575,18 @@ class _AuctionBiddingPanelState extends State<AuctionBiddingPanel> {
                       child: CircularProgressIndicator(strokeWidth: 2, color: Colors.black),
                     )
                   : Icon(
-                      _bidAlreadyPlaced ? Icons.lock : Icons.verified,
-                      color: _bidAlreadyPlaced ? Colors.white54 : Colors.black,
+                      _bidCtaInactive ? Icons.lock : Icons.verified,
+                      color: _bidCtaInactive ? Colors.white54 : Colors.black,
                       size: 20,
                     ),
               label: Text(
                 _bidAlreadyPlaced
                     ? 'BID ALREADY PLACED'
-                    : (_placing ? 'PLACING…' : 'CONFIRM BID'),
+                    : (isMatchBiddingCutoffReached(widget.match)
+                        ? 'BIDDING CLOSED'
+                        : (_placing ? 'PLACING…' : 'CONFIRM BID')),
                 style: TextStyle(
-                  color: _bidAlreadyPlaced ? Colors.white54 : Colors.black,
+                  color: _bidCtaInactive ? Colors.white54 : Colors.black,
                   fontWeight: FontWeight.w900,
                   fontSize: 16,
                   letterSpacing: 1.2,

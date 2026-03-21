@@ -1,6 +1,7 @@
 import 'package:firebase_auth/firebase_auth.dart';
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../../app/widgets/auction_command_app_bar.dart';
 import '../../../../app/widgets/custom_nav_bar.dart';
 import '../../../bids/data/datasources/bids_firestore_data_source.dart';
@@ -513,6 +514,12 @@ class _AuctionDashboardScreenState extends State<AuctionDashboardScreen> {
         myBid: null,
         onEnterAuction: () {
           if (isMatchScheduleLocked(match)) return;
+          if (isMatchBiddingCutoffReached(match)) {
+            ScaffoldMessenger.of(context).showSnackBar(
+              AppSnackBars.warning('Bidding closes 30 minutes before match start.'),
+            );
+            return;
+          }
           Navigator.of(context).push(
             MaterialPageRoute<void>(
               builder: (_) => PlaceBidScreen(match: match),
@@ -535,6 +542,12 @@ class _AuctionDashboardScreenState extends State<AuctionDashboardScreen> {
           onEnterAuction: () {
             if (myBid != null) return;
             if (isMatchScheduleLocked(match)) return;
+            if (isMatchBiddingCutoffReached(match)) {
+              ScaffoldMessenger.of(context).showSnackBar(
+                AppSnackBars.warning('Bidding closes 30 minutes before match start.'),
+              );
+              return;
+            }
             Navigator.of(context).push(
               MaterialPageRoute<void>(
                 builder: (_) => PlaceBidScreen(match: match),

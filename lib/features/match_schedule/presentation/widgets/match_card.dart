@@ -79,7 +79,9 @@ class MatchCard extends StatelessWidget {
     final scheduleLocked = isMatchScheduleLocked(match);
     final completed = isMatchCompleted(match);
     final winnerSide = matchCompletedWinnerSide(match);
-    final greyNoBidLocked = scheduleLocked && !userHasBid && !completed;
+    final biddingCutoff = isMatchBiddingCutoffReached(match);
+    final greyNoBidLocked =
+        !userHasBid && !completed && (scheduleLocked || biddingCutoff);
 
     final cardBg = const Color(0xFF1A1D26);
     final border = completed
@@ -417,9 +419,21 @@ class MatchCard extends StatelessWidget {
       );
     }
 
+    if (isMatchBiddingCutoffReached(match)) {
+      return Text(
+        'BIDDING CLOSED',
+        style: TextStyle(
+          color: Colors.orange.shade200.withValues(alpha: 0.85),
+          fontWeight: FontWeight.bold,
+          fontSize: 12,
+        ),
+      );
+    }
+
     return ElevatedButton(
       onPressed: () {
         if (isMatchScheduleLocked(match)) return;
+        if (isMatchBiddingCutoffReached(match)) return;
         Navigator.of(context).push(
           MaterialPageRoute<void>(
             builder: (context) => PlaceBidScreen(match: match),

@@ -39,6 +39,19 @@ class AuctionCommandApp extends StatelessWidget {
           primary: AppColors.neonGreen,
           surface: AppColors.surface,
         ),
+        snackBarTheme: SnackBarThemeData(
+          backgroundColor: AppColors.cardDark,
+          behavior: SnackBarBehavior.floating,
+          contentTextStyle: const TextStyle(
+            color: Color(0xFFFFE082),
+            fontWeight: FontWeight.w600,
+            fontSize: 14,
+          ),
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(12),
+            side: BorderSide(color: const Color(0xFFFFE082).withValues(alpha: 0.42)),
+          ),
+        ),
       ),
       home: _AuthGate(
         matchScheduleRepository: repository,

@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../../../../app/theme/app_snack_bars.dart';
 import '../../../teams/domain/entities/team.dart';
 import '../../../teams/domain/exceptions/auth_email_already_in_use.dart';
 import '../../../teams/domain/exceptions/team_id_already_exists.dart';
@@ -85,8 +86,8 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
       if (!mounted) return;
       final loginEmail = Team.firebaseAuthEmailFromTeamName(_teamNameController.text.trim());
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text('Squad registered. Log in with $loginEmail and your team password.'),
+        AppSnackBars.success(
+          'Squad registered. Log in with $loginEmail and your team password.',
         ),
       );
       if (widget.onLoginTap != null) {
@@ -97,21 +98,19 @@ class _RegistrationScreenState extends State<RegistrationScreen> {
     } on TeamIdAlreadyExistsException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(content: Text('This team ID is already registered. Choose another.')),
+        AppSnackBars.warning('This team ID is already registered. Choose another.'),
       );
     } on AuthEmailAlreadyInUseException {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text(
-            'That team name already maps to a login email. Change the team name or sign in instead.',
-          ),
+        AppSnackBars.warning(
+          'That team name already maps to a login email. Change the team name or sign in instead.',
         ),
       );
     } catch (e) {
       if (!mounted) return;
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(content: Text('Could not register: $e')),
+        AppSnackBars.warning('Could not register: $e'),
       );
     } finally {
       if (mounted) setState(() => _submitting = false);
