@@ -68,6 +68,17 @@ class TeamsFirestoreDataSource {
         );
   }
 
+  /// [storedId] may be a **Firestore document id** or the **`team_id`** field value (e.g. `"MI"`).
+  /// Returns the canonical **document id** for updates that must match `bids.match_bid_id`.
+  Future<String?> resolveTeamDocumentId(String storedId) async {
+    final s = storedId.trim();
+    if (s.isEmpty) return null;
+    final byDoc = await _db.collection(collectionName).doc(s).get();
+    if (byDoc.exists) return s;
+    final byField = await fetchByTeamId(s);
+    return byField?.documentId;
+  }
+
   /// [teamId] matches document field `team_id` (e.g. "MI").
   Future<TeamModel?> fetchByTeamId(String teamId) async {
     final trimmed = teamId.trim();

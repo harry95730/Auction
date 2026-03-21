@@ -281,6 +281,13 @@ _StatusPresentation _statusPresentation(String raw) {
         iconColor: Color(0xFFF87171),
         amountColor: Color(0xFFF87171),
       );
+    case 'draw':
+      return const _StatusPresentation(
+        label: 'DRAW',
+        textColor: Color(0xFF93C5FD),
+        iconColor: Color(0xFF93C5FD),
+        amountColor: Color(0xFF93C5FD),
+      );
     case 'outbid':
       return const _StatusPresentation(
         label: 'OUTBID',

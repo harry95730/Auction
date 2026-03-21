@@ -454,8 +454,9 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
 
     final name1 = t1.name ?? t1.teamId ?? 'Team 1';
     final name2 = t2.name ?? t2.teamId ?? 'Team 2';
-    final id1 = t1.teamId ?? t1.documentId;
-    final id2 = t2.teamId ?? t2.documentId;
+    // Persist Firestore document ids so `team_1_id` / `team_2_id` match `bids.match_bid_id` (picked side).
+    final id1 = t1.documentId.trim().isNotEmpty ? t1.documentId.trim() : (t1.teamId ?? '');
+    final id2 = t2.documentId.trim().isNotEmpty ? t2.documentId.trim() : (t2.teamId ?? '');
 
     final odds = <double>[_selectedOddsHome, _selectedOddsAway];
 
@@ -817,6 +818,7 @@ class _MatchManagementScreenState extends State<MatchManagementScreen> {
               child: DropdownButtonHideUnderline(
                 child: DropdownButton<String>(
                   isExpanded: true,
+                  menuMaxHeight: 280,
                   dropdownColor: _surface,
                   value: _effectiveVenueDropdownValue,
                   hint: const Text(

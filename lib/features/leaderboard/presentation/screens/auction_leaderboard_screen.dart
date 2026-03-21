@@ -51,7 +51,10 @@ class _AuctionLeaderboardScreenState extends State<AuctionLeaderboardScreen> {
     super.initState();
     _teamRepo = widget.teamRepository ?? TeamRepositoryImpl(TeamsFirestoreDataSource());
     _matchRepo = widget.matchScheduleRepository ??
-        MatchScheduleRepositoryImpl(MatchScheduleFirestoreDataSource());
+        MatchScheduleRepositoryImpl(
+          MatchScheduleFirestoreDataSource(),
+          BidsFirestoreDataSource(),
+        );
     _bidsRepo = widget.bidsRepository ?? BidsRepositoryImpl(BidsFirestoreDataSource());
     _usersDs = UsersFirestoreDataSource();
     _teamsStream = _teamRepo.watchTeams(tournament: widget.tournament);

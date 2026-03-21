@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import '../features/auth/presentation/screens/login_screen.dart';
 import '../features/auth/presentation/screens/registration_screen.dart';
 import 'auction_command_shell.dart';
+import '../features/bids/data/datasources/bids_firestore_data_source.dart';
 import '../features/match_schedule/data/datasources/match_schedule_firestore_data_source.dart';
 import '../features/match_schedule/data/repositories/match_schedule_repository_impl.dart';
 import '../features/match_schedule/domain/repositories/match_schedule_repository.dart';
@@ -22,6 +23,7 @@ class AuctionCommandApp extends StatelessWidget {
   Widget build(BuildContext context) {
     final repository = MatchScheduleRepositoryImpl(
       MatchScheduleFirestoreDataSource(),
+      BidsFirestoreDataSource(),
     );
     final teamsDataSource = TeamsFirestoreDataSource();
     final teamRepository = TeamRepositoryImpl(teamsDataSource);

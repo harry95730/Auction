@@ -1,11 +1,40 @@
+import '../../../bids/data/datasources/bids_firestore_data_source.dart';
 import '../../domain/entities/match.dart';
 import '../../domain/repositories/match_schedule_repository.dart';
 import '../datasources/match_schedule_firestore_data_source.dart';
 
 class MatchScheduleRepositoryImpl implements MatchScheduleRepository {
-  MatchScheduleRepositoryImpl(this._firestoreDataSource);
+  MatchScheduleRepositoryImpl(
+    this._firestoreDataSource,
+    this._bidsDataSource,
+  );
 
   final MatchScheduleFirestoreDataSource _firestoreDataSource;
+  final BidsFirestoreDataSource _bidsDataSource;
+
+  Future<void> _settleIfNeeded({
+    required String matchDocumentId,
+    required String? result,
+    required String team1Id,
+    required String team2Id,
+  }) async {
+    final r = (result ?? '').trim();
+    if (r.isEmpty) return;
+    final lr = r.toLowerCase().replaceAll('-', '_');
+    if (lr != 'team_1' &&
+        lr != 'team1' &&
+        lr != 'team_2' &&
+        lr != 'team2' &&
+        lr != 'draw') {
+      return;
+    }
+    await _bidsDataSource.settleBidsForMatchResult(
+      matchDocumentId: matchDocumentId,
+      matchResult: lr,
+      team1Id: team1Id,
+      team2Id: team2Id,
+    );
+  }
 
   @override
   Future<List<Match>> getMatches() async {
@@ -33,8 +62,8 @@ class MatchScheduleRepositoryImpl implements MatchScheduleRepository {
     String tournament = 'IPL',
     int season = 2026,
     String? result,
-  }) {
-    return _firestoreDataSource.createMatch(
+  }) async {
+    final id = await _firestoreDataSource.createMatch(
       matchNo: matchNo,
       matchDate: matchDate,
       venue: venue,
@@ -49,6 +78,13 @@ class MatchScheduleRepositoryImpl implements MatchScheduleRepository {
       season: season,
       result: result,
     );
+    await _settleIfNeeded(
+      matchDocumentId: id,
+      result: result,
+      team1Id: team1Id,
+      team2Id: team2Id,
+    );
+    return id;
   }
 
   @override
@@ -67,8 +103,8 @@ class MatchScheduleRepositoryImpl implements MatchScheduleRepository {
     required String tournament,
     required int season,
     String? result,
-  }) {
-    return _firestoreDataSource.updateMatch(
+  }) async {
+    await _firestoreDataSource.updateMatch(
       documentId: documentId,
       matchNo: matchNo,
       matchDate: matchDate,
@@ -83,6 +119,12 @@ class MatchScheduleRepositoryImpl implements MatchScheduleRepository {
       tournament: tournament,
       season: season,
       result: result,
+    );
+    await _settleIfNeeded(
+      matchDocumentId: documentId,
+      result: result,
+      team1Id: team1Id,
+      team2Id: team2Id,
     );
   }
 }

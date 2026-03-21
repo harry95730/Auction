@@ -438,7 +438,7 @@ class _PlaceBidScreenState extends State<PlaceBidScreen> {
                         assetPath,
                         fit: BoxFit.cover,
                         alignment: Alignment.center,
-                        errorBuilder: (_, _, _) => const SizedBox.expand(),
+                        errorBuilder: (_, a, b) => const SizedBox.expand(),
                       ),
                     )
                   : const SizedBox.expand(),

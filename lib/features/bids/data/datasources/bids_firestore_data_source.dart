@@ -139,4 +139,100 @@ class BidsFirestoreDataSource {
               .toList(),
         );
   }
+
+  /// When a match ends (`team_1` / `team_2` / `draw`), credit or record each **pending** bid and update bidder **teams**.
+  ///
+  /// - **Win** (picked side = winning side): `balance += bid_amount * payout_odds`, `previous_balance = payout`,
+  ///   `matches_played++`, `matches_won++`, bid `result`: `won`.
+  /// - **Loss**: `previous_balance = -bid_amount`, `matches_played++`, `matches_lost++`, bid `result`: `lost`.
+  /// - **Draw**: refund stake `balance += bid_amount`, `previous_balance = 0`, `matches_played++`, bid `result`: `draw`.
+  ///
+  /// Skips bids whose `result` is already not `pending`.
+  ///
+  /// Match `team_1_id` / `team_2_id` may store either a **document id** or **`team_id`** (see admin save);
+  /// `bids.match_bid_id` is always the picked side's **teams document id** — we resolve match ids before comparing.
+  Future<void> settleBidsForMatchResult({
+    required String matchDocumentId,
+    required String matchResult,
+    required String team1Id,
+    required String team2Id,
+  }) async {
+    final mid = matchDocumentId.trim();
+    if (mid.isEmpty) return;
+
+    final r = matchResult.trim().toLowerCase().replaceAll('-', '_');
+    if (r != 'team_1' &&
+        r != 'team1' &&
+        r != 'team_2' &&
+        r != 'team2' &&
+        r != 'draw') {
+      return;
+    }
+
+    final teamsDs = TeamsFirestoreDataSource(firestore: _db);
+    final t1 = team1Id.trim();
+    final t2 = team2Id.trim();
+
+    final String? winningPickedDocId;
+    if (r == 'draw') {
+      winningPickedDocId = null;
+    } else {
+      final sideRaw = (r == 'team_1' || r == 'team1') ? t1 : t2;
+      winningPickedDocId = await teamsDs.resolveTeamDocumentId(sideRaw);
+      if (winningPickedDocId == null) return;
+    }
+
+    final snap = await _db.collection(collectionName).where('match_id', isEqualTo: mid).get();
+
+    for (final doc in snap.docs) {
+      await _db.runTransaction((txn) async {
+        final bidRef = doc.reference;
+        final bidSnap = await txn.get(bidRef);
+        if (!bidSnap.exists) return;
+
+        final d = bidSnap.data()!;
+        final bidStatus = (d['result'] as String?)?.trim().toLowerCase() ?? 'pending';
+        if (bidStatus != 'pending') return;
+
+        final bidderTeamId = (d['team_id'] as String?)?.trim() ?? '';
+        final picked = (d['match_bid_id'] as String?)?.trim() ?? '';
+        final stake = (d['bid_amount'] as num?)?.toDouble() ?? 0.0;
+        final odds = (d['payout_odds'] as num?)?.toDouble() ?? 1.0;
+        if (bidderTeamId.isEmpty || stake <= 0) return;
+
+        final teamRef = _db.collection(TeamsFirestoreDataSource.collectionName).doc(bidderTeamId);
+        final teamSnap = await txn.get(teamRef);
+        if (!teamSnap.exists) return;
+
+        if (r == 'draw') {
+          txn.update(teamRef, {
+            'balance': FieldValue.increment(stake),
+            'previous_balance': 0,
+            'matches_played': FieldValue.increment(1),
+          });
+          txn.update(bidRef, {'result': 'draw'});
+          return;
+        }
+
+        final won = winningPickedDocId != null && picked == winningPickedDocId;
+        if (won) {
+          final payout = stake * odds;
+          txn.update(teamRef, {
+            'balance': FieldValue.increment(payout),
+            'previous_balance': payout,
+            'matches_played': FieldValue.increment(1),
+            'matches_won': FieldValue.increment(1),
+          });
+          txn.update(bidRef, {'result': 'won'});
+        } else {
+          txn.update(teamRef, {
+            'previous_balance': -stake,
+            'matches_played': FieldValue.increment(1),
+            'matches_lost': FieldValue.increment(1),
+          });
+          txn.update(bidRef, {'result': 'lost'});
+        }
+      });
+    }
+  }
 }
