@@ -108,11 +108,23 @@ class RecentBidRow extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final title = _matchTitle(match, bid);
-    final role = _roleLine(bid);
     final status = _statusPresentation(bid.result);
-    final price = '₹ ${_formatMoney(bid.bidAmount)}';
+    final bidAmount = _formatMoney(bid.bidAmount);
     final odds = effectivePayoutOddsForBid(bid, match);
+    final cleanedBid = bidAmount
+        .replaceAll(RegExp(r'[^\d.]'), '')
+        .trim();
+
+    final double amount = double.tryParse(cleanedBid) ?? 0.0;
+
+    final double parsedOdds = odds ?? 0.0;
+
+
+    final String price = status.label == 'WON'
+        ? '₹ ${(amount * parsedOdds).toStringAsFixed(0)}'
+        : '₹ $bidAmount';
     final potentialWin = odds != null ? bid.bidAmount * odds : null;
+
 
     return Column(
       children: [
@@ -145,33 +157,17 @@ class RecentBidRow extends StatelessWidget {
                       maxLines: 2,
                       overflow: TextOverflow.ellipsis,
                     ),
-                    const SizedBox(height: 4),
-                    Text(
-                      role,
-                      style: TextStyle(
-                        color: Colors.white.withValues(alpha: 0.5),
-                        fontSize: 11,
-                        letterSpacing: 0.5,
-                      ),
-                    ),
                     if (odds != null) ...[
                       const SizedBox(height: 6),
                       Text(
-                        '@ ${odds.toStringAsFixed(2)}× on your pick',
+                        status.label == 'WON' ? '@ ${odds.toStringAsFixed(2)} on your pick' : 'Odds @ ${odds.toStringAsFixed(2)}',
                         style: TextStyle(
-                          color: Colors.green.shade300,
+                          color: status.label == 'WON' ? Colors.green.shade300 : Colors.white.withValues(alpha: 0.5),
                           fontSize: 12,
                           fontWeight: FontWeight.w600,
                         ),
                       ),
-                      if (potentialWin != null)
-                        Text(
-                          'If win: ₹ ${_formatMoney(potentialWin)}',
-                          style: TextStyle(
-                            color: Colors.white.withValues(alpha: 0.45),
-                            fontSize: 11,
-                          ),
-                        ),
+                      
                     ],
                   ],
                 ),
@@ -218,16 +214,6 @@ class RecentBidRow extends StatelessWidget {
     final a = (m.team1 ?? 'T1').trim();
     final b = (m.team2 ?? 'T2').trim();
     return '$a vs $b';
-  }
-
-  String _roleLine(RecentBid bid) {
-    final id = bid.pickedTeamDocumentId;
-    final pickShort = id.length > 10 ? '${id.substring(0, 10)}…' : id;
-    final pick = id.isNotEmpty ? 'STAKE ON PICK • $pickShort' : 'MATCH BID';
-    if (bid.createdAt == null) return pick;
-    final d = bid.createdAt!;
-    final mo = _months[d.month - 1];
-    return '$pick • $mo ${d.day}, ${d.hour.toString().padLeft(2, '0')}:${d.minute.toString().padLeft(2, '0')}';
   }
 
   static const _months = <String>[
